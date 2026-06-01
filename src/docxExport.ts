@@ -2,6 +2,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  Footer,
   Packer,
   Paragraph,
   Table,
@@ -143,10 +144,19 @@ const buildLineRuns = (value: string) => {
 const buildTableCell = (
   text: string,
   width: number,
-  options: { bold?: boolean; align?: Alignment; borderless?: boolean; spacingAfter?: number } = {},
+  options: {
+    bold?: boolean
+    align?: Alignment
+    borderless?: boolean
+    spacingAfter?: number
+    columnSpan?: number
+    rowSpan?: number
+  } = {},
 ) =>
   new TableCell({
     width: { size: width, type: WidthType.DXA },
+    columnSpan: options.columnSpan,
+    rowSpan: options.rowSpan,
     borders: options.borderless
       ? {
           top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
@@ -249,14 +259,25 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
     ],
   })
 
-  const resultHeader = new TableRow({
-    children: [
-      buildTableCell('Criteria', 5200, { bold: true }),
-      ...[1, 2, 3, 4, 5].map((rating) =>
-        buildTableCell(String(rating), 960, { bold: true, align: AlignmentType.CENTER }),
-      ),
-    ],
-  })
+  const resultHeader = [
+    new TableRow({
+      children: [
+        buildTableCell('Criteria', 5200, { bold: true, align: AlignmentType.CENTER, rowSpan: 2 }),
+        buildTableCell('Percentage of Participants', 4800, {
+          bold: true,
+          align: AlignmentType.CENTER,
+          columnSpan: 5,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        ...[1, 2, 3, 4, 5].map((rating) =>
+          buildTableCell(String(rating), 960, { bold: true, align: AlignmentType.CENTER }),
+        ),
+      ],
+    }),
+  ]
 
   const resultRows = summary.map((item, index) =>
     new TableRow({
@@ -273,14 +294,14 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
     children: [
       buildTableCell('AVERAGE', 5200, { bold: true, align: AlignmentType.CENTER }),
       ...[1, 2, 3, 4, 5].map((rating) =>
-        buildTableCell(percentageText(averages[rating]), 960, { bold: true, align: AlignmentType.CENTER }),
+        buildTableCell(percentageText(averages[rating]), 960, { align: AlignmentType.CENTER }),
       ),
     ],
   })
 
   const resultsTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [resultHeader, ...resultRows, resultAverage],
+    rows: [...resultHeader, ...resultRows, resultAverage],
   })
 
   const doc = new Document({
@@ -299,6 +320,28 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
               right: 1440,
             },
           },
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: 'ISO 9001:2015 Certified',
+                    font: 'Arial',
+                    size: 16,
+                  }),
+                  new TextRun({
+                    text: 'C.R. NO.: TUV 100 05 3040',
+                    break: 1,
+                    font: 'Arial',
+                    size: 16,
+                  }),
+                ],
+              }),
+            ],
+          }),
         },
         children: [
           new Paragraph({
@@ -322,8 +365,9 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
             children: [new TextRun({ text: '', font: fontName, size: fontSize })],
           }),
           new Paragraph({
+            spacing: { after: 160 },
             children: [
-              new TextRun({ text: 'Likert Rating Guide', font: fontName, size: fontSize }),
+              new TextRun({ text: 'The rating guide for the criteria is in Likert Scale format, as the following:', font: fontName, size: fontSize }),
             ],
           }),
           likertTable,
@@ -331,6 +375,7 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
             children: [new TextRun({ text: '', font: fontName, size: fontSize })],
           }),
           new Paragraph({
+            spacing: { after: 160 },
             children: [
               new TextRun({ text: 'Results per Criteria', font: fontName, size: fontSize }),
             ],
@@ -340,8 +385,9 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
             children: [new TextRun({ text: '', font: fontName, size: fontSize })],
           }),
           new Paragraph({
+            spacing: { after: 160 },
             children: [
-              new TextRun({ text: 'Comments and Suggestions', font: fontName, size: fontSize }),
+              new TextRun({ text: 'Comments and Suggestions:', font: fontName, size: fontSize }),
             ],
           }),
           ...comments.map(
@@ -350,7 +396,6 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
                 children: [
                   new TextRun({
                     text: `${index + 1}. `,
-                    bold: true,
                     font: fontName,
                     size: fontSize,
                   }),
@@ -358,6 +403,20 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
                 ],
               }),
           ),
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: 'Thank you!',
+                  bold: true,
+                  font: fontName,
+                  size: fontSize,
+                }),
+              ],
+            }),
         ],
       },
     ],
