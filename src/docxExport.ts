@@ -1,7 +1,6 @@
 import {
   AlignmentType,
   Document,
-  HeadingLevel,
   Packer,
   Paragraph,
   Table,
@@ -23,6 +22,9 @@ type Batch = {
 }
 
 type Alignment = (typeof AlignmentType)[keyof typeof AlignmentType]
+
+const fontName = 'Cambria'
+const fontSize = 22
 
 const criteria = [
   ['Clarity of the topic objectives at the beginning', 'clarityObjectives'],
@@ -131,6 +133,8 @@ const buildLineRuns = (value: string) => {
     new TextRun({
       text: line,
       break: index > 0 ? 1 : undefined,
+      font: fontName,
+      size: fontSize,
     }),
   )
 }
@@ -141,7 +145,7 @@ const buildTableCell = (text: string, width: number, options: { bold?: boolean; 
     children: [
       new Paragraph({
         alignment: options.align,
-        children: [new TextRun({ text, bold: options.bold })],
+        children: [new TextRun({ text, bold: options.bold, font: fontName, size: fontSize })],
       }),
     ],
   })
@@ -264,26 +268,62 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
       {
         children: [
           new Paragraph({
-            text: 'Results of the Resource Person Evaluation',
-            heading: HeadingLevel.HEADING_1,
             alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: 'Results of the Resource Person Evaluation',
+                font: fontName,
+                size: fontSize,
+              }),
+            ],
           }),
-          new Paragraph({ text: `Respondents: ${evaluations.length}` }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Respondents: ${evaluations.length}`,
+                font: fontName,
+                size: fontSize,
+              }),
+            ],
+          }),
           infoTable,
-          new Paragraph({ text: '' }),
-          new Paragraph({ text: 'Likert Rating Guide', heading: HeadingLevel.HEADING_2 }),
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Likert Rating Guide', font: fontName, size: fontSize }),
+            ],
+          }),
           likertTable,
-          new Paragraph({ text: '' }),
-          new Paragraph({ text: 'Results per Criteria', heading: HeadingLevel.HEADING_2 }),
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Results per Criteria', font: fontName, size: fontSize }),
+            ],
+          }),
           resultsTable,
-          new Paragraph({ text: '' }),
-          new Paragraph({ text: 'Comments and Suggestions', heading: HeadingLevel.HEADING_2 }),
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Comments and Suggestions', font: fontName, size: fontSize }),
+            ],
+          }),
           ...comments.map(
             (comment, index) =>
               new Paragraph({
                 children: [
-                  new TextRun({ text: `${index + 1}. `, bold: true }),
-                  new TextRun({ text: comment }),
+                  new TextRun({
+                    text: `${index + 1}. `,
+                    bold: true,
+                    font: fontName,
+                    size: fontSize,
+                  }),
+                  new TextRun({ text: comment, font: fontName, size: fontSize }),
                 ],
               }),
           ),
