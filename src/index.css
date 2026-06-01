@@ -28,6 +28,10 @@ textarea {
   grid-template-columns: 260px minmax(0, 1fr);
 }
 
+.public-app-shell {
+  grid-template-columns: 1fr;
+}
+
 .nav-panel {
   background: #0f172a;
   color: #f8fafc;
@@ -96,6 +100,32 @@ textarea {
   width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 2rem 0 3rem;
+}
+
+.public-page-shell {
+  width: min(920px, calc(100% - 2rem));
+}
+
+.public-evaluation-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.public-evaluation-header {
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.public-evaluation-header h2 {
+  margin: 0.25rem 0 0;
+  font-size: clamp(1.6rem, 2vw + 1rem, 2.4rem);
+}
+
+.public-evaluation-header p:last-child {
+  color: #475569;
+  margin: 0.35rem 0 0;
 }
 
 .page-header,
@@ -279,6 +309,45 @@ button.danger:hover {
   margin: 1rem 0;
   display: grid;
   gap: 1rem;
+}
+
+.share-evaluation-card {
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.share-link-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.share-link-row input {
+  min-width: 0;
+  flex: 1;
+  font-size: 0.92rem;
+}
+
+.qr-card {
+  width: 150px;
+  height: 150px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.5rem;
+}
+
+.qr-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .respondent-count {
@@ -825,8 +894,14 @@ td {
   .feedback-grid,
   .detail-grid,
   .remarks-grid,
-  .likert-legend {
+  .likert-legend,
+  .share-evaluation-card {
     grid-template-columns: 1fr;
+  }
+
+  .qr-card {
+    width: 180px;
+    height: 180px;
   }
 
   .page-header,
@@ -850,6 +925,10 @@ td {
   }
 
   .row-actions {
+    flex-direction: column;
+  }
+
+  .share-link-row {
     flex-direction: column;
   }
 }

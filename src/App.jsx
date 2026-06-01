@@ -115,6 +115,26 @@ const topicEvaluationLabels = {
 
 const formatTopicEvaluationValue = (value) => topicEvaluationLabels[value] || value || 'Not marked'
 
+const getPublicBatchIdFromUrl = () => {
+  if (typeof window === 'undefined') return ''
+
+  return new URLSearchParams(window.location.search).get('evaluate_batch') || ''
+}
+
+const buildPublicEvaluationUrl = (batchId) => {
+  if (typeof window === 'undefined' || !batchId) return ''
+
+  const url = new URL(window.location.href)
+  url.search = ''
+  url.hash = ''
+  url.searchParams.set('evaluate_batch', batchId)
+
+  return url.toString()
+}
+
+const buildQrCodeUrl = (value) =>
+  value ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(value)}` : ''
+
 const normalizeEvaluation = (evaluation = {}) => ({
   ...evaluation,
   respondentName: readValue(evaluation.respondentName, evaluation.respondent_name),
@@ -163,7 +183,9 @@ const normalizeBatch = (batch = {}) => {
 function App() {
   const editBatchRef = useRef(null)
   const pageShellRef = useRef(null)
-  const [currentPage, setCurrentPage] = useState('batches')
+  const [publicBatchId] = useState(getPublicBatchIdFromUrl)
+  const isPublicEvaluation = Boolean(publicBatchId)
+  const [currentPage, setCurrentPage] = useState(isPublicEvaluation ? 'evaluation' : 'batches')
   const [batchForm, setBatchForm] = useState(initialBatchForm)
   const [batches, setBatches] = useState([])
   const [activeBatchId, setActiveBatchId] = useState('')
@@ -189,6 +211,9 @@ function App() {
     () => batches.find((batch) => String(batch.id) === activeBatchId),
     [activeBatchId, batches],
   )
+
+  const publicEvaluationUrl = useMemo(() => buildPublicEvaluationUrl(activeBatch?.id), [activeBatch])
+  const publicEvaluationQrUrl = useMemo(() => buildQrCodeUrl(publicEvaluationUrl), [publicEvaluationUrl])
 
   const activeTopics = useMemo(() => parseTopics(activeBatch?.topicDelivered), [activeBatch])
 
@@ -318,14 +343,42 @@ function App() {
         throw new Error(body.message || 'Unable to load batches.')
       }
 
-      setBatches((body.batches || []).map(normalizeBatch))
+      const normalizedBatches = (body.batches || []).map(normalizeBatch)
+
+      setBatches(normalizedBatches)
       setActiveBatchId((current) => {
-        if (current && body.batches?.some((batch) => String(batch.id) === current)) {
+        if (isPublicEvaluation) {
+          return normalizedBatches.some((batch) => String(batch.id) === String(publicBatchId))
+            ? String(publicBatchId)
+            : ''
+        }
+
+        if (current && normalizedBatches.some((batch) => String(batch.id) === current)) {
           return current
         }
 
-        return body.batches?.[0] ? String(body.batches[0].id) : ''
+        return normalizedBatches[0] ? String(normalizedBatches[0].id) : ''
       })
+
+      if (isPublicEvaluation) {
+        const publicBatch = normalizedBatches.find((batch) => String(batch.id) === String(publicBatchId))
+
+        if (publicBatch) {
+          setCurrentPage('evaluation')
+          setFormData((current) => ({
+            ...current,
+            rpCode: publicBatch.rpCode || '',
+            trainingCode: publicBatch.trainingCode || '',
+            resourcePersonName: publicBatch.resourcePersonName || '',
+            topicDelivered: publicBatch.topicDelivered || '',
+            trainingTitle: publicBatch.name || '',
+            deliveryDate: publicBatch.date || '',
+          }))
+        } else {
+          setStatusType('error')
+          setStatusMessage('This evaluation link is invalid or the batch is no longer available.')
+        }
+      }
     } catch (error) {
       setStatusType('error')
       setStatusMessage(error.message || 'Unable to load batches from the database.')
@@ -433,6 +486,8 @@ function App() {
   }
 
   const openBatchEvaluation = (batchId) => {
+    if (isPublicEvaluation) return
+
     const selectedBatch = batches.find((batch) => String(batch.id) === String(batchId))
 
     setActiveBatchId(String(batchId))
@@ -642,8 +697,16 @@ function App() {
 
     if (!activeBatch) {
       setStatusType('error')
-      setStatusMessage('Select a batch before submitting an evaluation.')
-      setCurrentPage('batches')
+      setStatusMessage(
+        isPublicEvaluation
+          ? 'This evaluation link is invalid or the batch is no longer available.'
+          : 'Select a batch before submitting an evaluation.',
+      )
+
+      if (!isPublicEvaluation) {
+        setCurrentPage('batches')
+      }
+
       return
     }
 
@@ -734,6 +797,19 @@ function App() {
     setIsSaving(false)
     setStatusType('idle')
     setStatusMessage('')
+  }
+
+  const handleCopyPublicEvaluationLink = async () => {
+    if (!publicEvaluationUrl) return
+
+    try {
+      await navigator.clipboard.writeText(publicEvaluationUrl)
+      setStatusType('success')
+      setStatusMessage('Public evaluation link copied.')
+    } catch {
+      setStatusType('error')
+      setStatusMessage('Copy failed. Select and copy the link manually.')
+    }
   }
 
   const startEditEvaluation = (evaluation) => {
@@ -1236,7 +1312,8 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={isPublicEvaluation ? 'app-shell public-app-shell' : 'app-shell'}>
+      {!isPublicEvaluation ? (
       <aside className="nav-panel">
         <div>
           <p className="eyebrow">ARRPE</p>
@@ -1266,8 +1343,10 @@ function App() {
           {activeBatch ? <small>{activeBatch.date}</small> : null}
         </div>
       </aside>
+      ) : null}
 
-      <main ref={pageShellRef} className="page-shell">
+      <main ref={pageShellRef} className={isPublicEvaluation ? 'page-shell public-page-shell' : 'page-shell'}>
+        {!isPublicEvaluation ? (
         <header className="page-header">
           <div>
             <h2>
@@ -1292,6 +1371,7 @@ function App() {
             {isLoadingBatches ? 'Refreshing...' : 'Refresh'}
           </button>
         </header>
+        ) : null}
 
         {statusMessage ? (
           <p className={`status-message ${statusType}`}>{statusMessage}</p>
@@ -1554,7 +1634,19 @@ function App() {
         ) : null}
 
         {currentPage === 'evaluation' ? (
-          <section>
+          <section className={isPublicEvaluation ? 'public-evaluation-stack' : undefined}>
+            {isPublicEvaluation ? (
+              <section className="public-evaluation-header">
+                <p className="eyebrow">ARRPE TMIS</p>
+                <h2>Resource Person Evaluation</h2>
+                <p>
+                  {activeBatch
+                    ? `You are evaluating ${activeBatch.name} (${activeBatch.date}).`
+                    : 'Loading evaluation link...'}
+                </p>
+              </section>
+            ) : null}
+
             <section className="panel">
               <div className="section-heading">
                 <h3>Training Details</h3>
@@ -1565,6 +1657,7 @@ function App() {
                 </p>
               </div>
 
+              {!isPublicEvaluation ? (
               <div className="toolbar-actions">
                 <button
                   type="button"
@@ -1575,11 +1668,36 @@ function App() {
                   Print Evaluation Form
                 </button>
               </div>
+              ) : null}
+
+              {!isPublicEvaluation && activeBatch ? (
+                <section className="share-evaluation-card">
+                  <div>
+                    <div className="section-heading">
+                      <h3>Public Evaluation Link</h3>
+                      <p>Share this link or QR code with respondents. It opens only the evaluation form for this batch.</p>
+                    </div>
+
+                    <div className="share-link-row">
+                      <input value={publicEvaluationUrl} readOnly aria-label="Public evaluation link" />
+                      <button type="button" className="secondary" onClick={handleCopyPublicEvaluationLink}>
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="qr-card">
+                    <img src={publicEvaluationQrUrl} alt="Public evaluation QR code" />
+                  </div>
+                </section>
+              ) : null}
 
               <form onSubmit={handleSubmit} className="tmis-form">
                 {!activeBatch ? (
                   <div className="form-lock">
-                    Go to Batches and choose Add Evaluation for the batch you want to use.
+                    {isPublicEvaluation
+                      ? 'This evaluation link is invalid or the batch is no longer available.'
+                      : 'Go to Batches and choose Add Evaluation for the batch you want to use.'}
                   </div>
                 ) : null}
 
