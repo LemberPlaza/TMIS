@@ -1,5 +1,6 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
   Packer,
   Paragraph,
@@ -139,12 +140,25 @@ const buildLineRuns = (value: string) => {
   )
 }
 
-const buildTableCell = (text: string, width: number, options: { bold?: boolean; align?: Alignment } = {}) =>
+const buildTableCell = (
+  text: string,
+  width: number,
+  options: { bold?: boolean; align?: Alignment; borderless?: boolean; spacingAfter?: number } = {},
+) =>
   new TableCell({
     width: { size: width, type: WidthType.DXA },
+    borders: options.borderless
+      ? {
+          top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        }
+      : undefined,
     children: [
       new Paragraph({
         alignment: options.align,
+        spacing: options.spacingAfter ? { after: options.spacingAfter } : undefined,
         children: [new TextRun({ text, bold: options.bold, font: fontName, size: fontSize })],
       }),
     ],
@@ -171,27 +185,33 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
     rows: [
       new TableRow({
         children: [
-          buildTableCell('Activity Title', 2800, { bold: true }),
-          buildTableCell(activityTitle, 7200),
+          buildTableCell('Activity Title', 2800, { borderless: true, spacingAfter: 160 }),
+          buildTableCell(activityTitle, 7200, { borderless: true, spacingAfter: 160 }),
         ],
       }),
       new TableRow({
         children: [
-          buildTableCell('Date and Time', 2800, { bold: true }),
-          buildTableCell(dateAndTime, 7200),
+          buildTableCell('Date and Time', 2800, { borderless: true, spacingAfter: 160 }),
+          buildTableCell(dateAndTime, 7200, { borderless: true, spacingAfter: 160 }),
         ],
       }),
       new TableRow({
         children: [
-          buildTableCell('Resource Person', 2800, { bold: true }),
-          buildTableCell(resourcePerson, 7200),
+          buildTableCell('Resource Person', 2800, { borderless: true, spacingAfter: 160 }),
+          buildTableCell(resourcePerson, 7200, { borderless: true, spacingAfter: 160 }),
         ],
       }),
       new TableRow({
         children: [
-          buildTableCell('Topic/s Delivered', 2800, { bold: true }),
+          buildTableCell('Topic/s Delivered', 2800, { borderless: true }),
           new TableCell({
             width: { size: 7200, type: WidthType.DXA },
+            borders: {
+              top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+              bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+              left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+              right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+            },
             children: [
               new Paragraph({
                 children: buildLineRuns(topicText),
@@ -269,22 +289,19 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
         children: [
           new Paragraph({
             alignment: AlignmentType.CENTER,
+            spacing: { after: 160 },
             children: [
               new TextRun({
                 text: 'Results of the Resource Person Evaluation',
                 font: fontName,
                 size: fontSize,
+                allCaps: true,
+                bold: true,
               }),
             ],
           }),
           new Paragraph({
-            children: [
-              new TextRun({
-                text: `Respondents: ${evaluations.length}`,
-                font: fontName,
-                size: fontSize,
-              }),
-            ],
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
           }),
           infoTable,
           new Paragraph({
