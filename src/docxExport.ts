@@ -286,6 +286,20 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
   const doc = new Document({
     sections: [
       {
+        properties: {
+          page: {
+            size: {
+              width: 11906,
+              height: 16838,
+            },
+            margin: {
+              top: 1440,
+              bottom: 994,
+              left: 1440,
+              right: 1440,
+            },
+          },
+        },
         children: [
           new Paragraph({
             alignment: AlignmentType.CENTER,
