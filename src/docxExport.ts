@@ -22,6 +22,8 @@ type Batch = {
   evaluations?: Evaluation[]
 }
 
+type Alignment = (typeof AlignmentType)[keyof typeof AlignmentType]
+
 const criteria = [
   ['Clarity of the topic objectives at the beginning', 'clarityObjectives'],
   ['Organization/sequencing of Topic', 'topicOrganization'],
@@ -128,12 +130,12 @@ const buildLineRuns = (value: string) => {
   return lines.map((line, index) =>
     new TextRun({
       text: line,
-      break: index > 0,
+      break: index > 0 ? 1 : undefined,
     }),
   )
 }
 
-const buildTableCell = (text: string, width: number, options: { bold?: boolean; align?: AlignmentType } = {}) =>
+const buildTableCell = (text: string, width: number, options: { bold?: boolean; align?: Alignment } = {}) =>
   new TableCell({
     width: { size: width, type: WidthType.DXA },
     children: [
