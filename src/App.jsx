@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import atiLogo from '../images/ati logo.png'
-import { exportEvaluationReportDocx } from './docxExport'
+import { exportEvaluationFormDocx, exportEvaluationReportDocx } from './docxExport'
+import { importCriteriaAssessmentWorkbook } from './excelImport'
 
 const API_BASE_URL = 'http://localhost/tmis-api'
 
@@ -204,6 +205,8 @@ function App() {
   const [isSaving, setIsSaving] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [deletingEvaluationId, setDeletingEvaluationId] = useState('')
+  const [importedBatch, setImportedBatch] = useState(null)
+  const [isImportingExcel, setIsImportingExcel] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const [statusType, setStatusType] = useState('idle')
 
@@ -1096,14 +1099,23 @@ function App() {
     )
   }
 
-  const handlePrintForm = () => {
+  const handleExportEvaluationForm = async () => {
     if (!activeBatch && !viewEvaluation) {
       setStatusType('error')
-      setStatusMessage('Select a batch or evaluation before printing the form.')
+      setStatusMessage('Select a batch or evaluation before exporting the form.')
       return
     }
 
-    window.print()
+    try {
+      setStatusType('idle')
+      setStatusMessage('Generating evaluation form...')
+      await exportEvaluationFormDocx(viewEvaluation || { ...activeBatch, ...formData }, activeBatch || {})
+      setStatusType('success')
+      setStatusMessage('Evaluation form exported to Word.')
+    } catch (error) {
+      setStatusType('error')
+      setStatusMessage(error.message || 'Unable to export the evaluation form.')
+    }
   }
 
   const renderPrintForm = (source = {}) => {
@@ -1317,6 +1329,48 @@ function App() {
     }
   }
 
+  const handleImportExcel = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    try {
+      setIsImportingExcel(true)
+      setStatusType('idle')
+      setStatusMessage('Reading Criteria_Assessment from Excel...')
+      const imported = await importCriteriaAssessmentWorkbook(file)
+      setImportedBatch(imported)
+      setStatusType('success')
+      setStatusMessage(`Imported ${imported.evaluations.length} evaluation rows from ${file.name}.`)
+    } catch (error) {
+      setImportedBatch(null)
+      setStatusType('error')
+      setStatusMessage(error.message || 'Unable to import the Excel workbook.')
+    } finally {
+      setIsImportingExcel(false)
+    }
+  }
+
+  const handleExportImportedWord = async () => {
+    if (!importedBatch?.evaluations?.length) {
+      setStatusType('error')
+      setStatusMessage('Import an Excel file before generating the Word document.')
+      return
+    }
+
+    try {
+      setStatusType('idle')
+      setStatusMessage('Generating Word document from imported Excel data...')
+      await exportEvaluationReportDocx(importedBatch)
+      setStatusType('success')
+      setStatusMessage('Imported Excel data exported to Word.')
+    } catch (error) {
+      setStatusType('error')
+      setStatusMessage(error.message || 'Unable to export imported Excel data to Word.')
+    }
+  }
+
   return (
     <div className={isPublicEvaluation ? 'app-shell public-app-shell' : 'app-shell'}>
       {!isPublicEvaluation ? (
@@ -1341,6 +1395,13 @@ function App() {
           >
             Evaluation Entries
           </button>
+          <button
+            type="button"
+            className={currentPage === 'import' ? 'active' : ''}
+            onClick={() => setCurrentPage('import')}
+          >
+            Import Excel
+          </button>
         </nav>
 
         <div className="nav-context">
@@ -1360,6 +1421,8 @@ function App() {
                 ? 'Batch Management'
                 : currentPage === 'evaluation'
                   ? `Create Evaluation Under ${activeBatch?.name || 'Selected Batch'}`
+                  : currentPage === 'import'
+                    ? 'Import Excel'
                   : 'Batch Evaluation Entries'}
             </h2>
             <p>
@@ -1369,6 +1432,8 @@ function App() {
                   ? activeBatch
                     ? `This evaluation will be saved directly under ${activeBatch.name} (${activeBatch.date}).`
                     : 'Choose a batch from the batch table before creating an evaluation.'
+                  : currentPage === 'import'
+                    ? 'Read the Criteria_Assessment tab from an Excel workbook and generate the Word evaluation report.'
                   : 'Review the evaluations saved under the selected batch.'}
             </p>
           </div>
@@ -1668,10 +1733,10 @@ function App() {
                 <button
                   type="button"
                   className="secondary"
-                  onClick={handlePrintForm}
+                  onClick={handleExportEvaluationForm}
                   disabled={!activeBatch}
                 >
-                  Print Evaluation Form
+                  Export to Word (.docx)
                 </button>
               </div>
               ) : null}
@@ -1872,6 +1937,108 @@ function App() {
                 </div>
               </form>
             </section>
+          </section>
+        ) : null}
+
+        {currentPage === 'import' ? (
+          <section className="page-stack">
+            <section className="panel">
+              <div className="table-toolbar">
+                <div className="section-heading">
+                  <h3>Import Excel</h3>
+                  <p>
+                    Upload an Excel workbook with a Criteria_Assessment tab. The imported rows can be exported to the
+                    Word report layout.
+                  </p>
+                </div>
+
+                <div className="toolbar-actions">
+                  <label className="file-import-control">
+                    <input
+                      type="file"
+                      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      onChange={handleImportExcel}
+                      disabled={isImportingExcel}
+                    />
+                    <span>{isImportingExcel ? 'Reading Excel...' : 'Choose Excel File'}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleExportImportedWord}
+                    disabled={!importedBatch?.evaluations?.length || isImportingExcel}
+                  >
+                    Generate Word (.docx)
+                  </button>
+                </div>
+              </div>
+
+              {importedBatch ? (
+                <div className="import-summary-grid">
+                  <div>
+                    <span>Source File</span>
+                    <strong>{importedBatch.sourceFileName}</strong>
+                  </div>
+                  <div>
+                    <span>Training</span>
+                    <strong>{importedBatch.name || 'Not found'}</strong>
+                  </div>
+                  <div>
+                    <span>Resource Person</span>
+                    <strong>{importedBatch.resourcePersonName || 'Not found'}</strong>
+                  </div>
+                  <div>
+                    <span>Delivery Date</span>
+                    <strong>{importedBatch.date || 'Not found'}</strong>
+                  </div>
+                  <div>
+                    <span>Imported Rows</span>
+                    <strong>{importedBatch.evaluations.length}</strong>
+                  </div>
+                  <div>
+                    <span>RP Code</span>
+                    <strong>{importedBatch.rpCode || 'Not found'}</strong>
+                  </div>
+                </div>
+              ) : (
+                <p className="empty-state">
+                  Choose the sample workbook or another compatible `.xlsx` file to preview imported criteria data.
+                </p>
+              )}
+            </section>
+
+            {importedBatch?.evaluations?.length ? (
+              <section className="panel">
+                <div className="section-heading">
+                  <h3>Imported Criteria Preview</h3>
+                  <p>Showing the first 12 parsed rows from Criteria_Assessment.</p>
+                </div>
+
+                <div className="entries-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Respondent</th>
+                        <th>Training</th>
+                        <th>Resource Person</th>
+                        <th>Delivery Date</th>
+                        <th>Average</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importedBatch.evaluations.slice(0, 12).map((evaluation) => (
+                        <tr key={evaluation.id}>
+                          <td>{evaluation.respondentName || 'N/A'}</td>
+                          <td>{evaluation.trainingTitle}</td>
+                          <td>{evaluation.resourcePersonName}</td>
+                          <td>{evaluation.deliveryDate}</td>
+                          <td>{evaluation.averageScore}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : null}
           </section>
         ) : null}
 
@@ -2128,8 +2295,8 @@ function App() {
                     <button type="button" onClick={() => startEditEvaluation(viewEvaluation)}>
                       Edit This Entry
                     </button>
-                    <button type="button" className="secondary" onClick={handlePrintForm} disabled={!activeBatch}>
-                      Print Evaluation Form
+                    <button type="button" className="secondary" onClick={handleExportEvaluationForm} disabled={!activeBatch}>
+                      Export to Word (.docx)
                     </button>
                     <button type="button" className="secondary" onClick={closeViewEvaluation}>
                       Close

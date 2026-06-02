@@ -299,6 +299,35 @@ button.danger:hover {
   justify-content: flex-end;
 }
 
+.file-import-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  font-weight: 700;
+  background: #2563eb;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.file-import-control:hover {
+  background: #1d4ed8;
+}
+
+.file-import-control input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-import-control:has(input:disabled) {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .edit-panel,
 .view-panel,
 .likert-panel {
@@ -473,7 +502,8 @@ button.danger:hover {
 
 .detail-grid,
 .score-detail-grid,
-.remarks-grid {
+.remarks-grid,
+.import-summary-grid {
   display: grid;
   gap: 0.75rem;
 }
@@ -490,9 +520,15 @@ button.danger:hover {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.import-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 1rem;
+}
+
 .detail-grid div,
 .score-detail-grid div,
-.remarks-grid div {
+.remarks-grid div,
+.import-summary-grid div {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
@@ -501,7 +537,8 @@ button.danger:hover {
 
 .detail-grid span,
 .score-detail-grid span,
-.remarks-grid span {
+.remarks-grid span,
+.import-summary-grid span {
   display: block;
   color: #64748b;
   font-size: 0.85rem;
@@ -509,7 +546,8 @@ button.danger:hover {
 }
 
 .detail-grid strong,
-.score-detail-grid strong {
+.score-detail-grid strong,
+.import-summary-grid strong {
   color: #0f172a;
 }
 
