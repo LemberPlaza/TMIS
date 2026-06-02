@@ -1299,6 +1299,12 @@ function App() {
       return
     }
 
+    if (!activeBatch.evaluations?.length) {
+      setStatusType('error')
+      setStatusMessage('Add at least one evaluation entry before exporting the Word report.')
+      return
+    }
+
     try {
       setStatusType('idle')
       setStatusMessage('Generating MS Word document...')

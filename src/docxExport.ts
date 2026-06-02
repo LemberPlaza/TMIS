@@ -1,5 +1,16 @@
-import atiLogoUrl from '../images/ati logo.png'
-import bagongPilipinasUrl from '../images/Bagongpilipinas.png'
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  Footer,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+} from 'docx'
 
 type Evaluation = Record<string, unknown>
 
@@ -11,6 +22,11 @@ type Batch = {
   topicDelivered?: string
   evaluations?: Evaluation[]
 }
+
+type Alignment = (typeof AlignmentType)[keyof typeof AlignmentType]
+
+const fontName = 'Cambria'
+const fontSize = 22
 
 const criteria = [
   ['Clarity of the topic objectives at the beginning', 'clarityObjectives'],
@@ -24,17 +40,6 @@ const criteria = [
   ['How the topic was ended', 'topicEnding'],
   ['Overall level of satisfaction', 'overallSatisfaction'],
 ] as const
-
-const encoder = new TextEncoder()
-let crcTable: number[] | null = null
-
-const escapeXml = (value: unknown) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
 
 const formatDate = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -57,82 +62,6 @@ const splitTopics = (value: unknown) =>
     .filter(Boolean)
 
 const percentageText = (value: number) => (value > 0 ? `${value.toFixed(2)}%` : '')
-
-const paragraph = (runs = '', options: { align?: string; before?: number; after?: number } = {}) => {
-  const spacing =
-    options.before !== undefined || options.after !== undefined
-      ? `<w:spacing w:before="${options.before ?? 0}" w:after="${options.after ?? 0}"/>`
-      : ''
-  const align = options.align ? `<w:jc w:val="${options.align}"/>` : ''
-  const props = spacing || align ? `<w:pPr>${spacing}${align}</w:pPr>` : ''
-
-  return `<w:p>${props}${runs}</w:p>`
-}
-
-const run = (
-  text: unknown,
-  options: { bold?: boolean; color?: string; size?: number } = {},
-) => {
-  const props = [
-    options.bold ? '<w:b/>' : '',
-    options.color ? `<w:color w:val="${escapeXml(options.color)}"/>` : '',
-    options.size ? `<w:sz w:val="${options.size}"/>` : '',
-    '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/>',
-  ].join('')
-
-  const parts = String(text ?? '').split(/\r?\n/)
-  const textXml = parts
-    .map((part, index) => `${index ? '<w:br/>' : ''}<w:t xml:space="preserve">${escapeXml(part)}</w:t>`)
-    .join('')
-
-  return `<w:r><w:rPr>${props}</w:rPr>${textXml}</w:r>`
-}
-
-const textParagraph = (
-  text: unknown,
-  runOptions: Parameters<typeof run>[1] = {},
-  paragraphOptions: Parameters<typeof paragraph>[1] = {},
-) => paragraph(run(text, runOptions), paragraphOptions)
-
-const imageRun = (relationshipId: string, width: number, height: number) => `
-<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
-<wp:extent cx="${width}" cy="${height}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>
-<wp:docPr id="${relationshipId.replace(/\D/g, '')}" name="Logo"/>
-<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>
-<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
-<pic:nvPicPr><pic:cNvPr id="0" name="Logo"/><pic:cNvPicPr/></pic:nvPicPr>
-<pic:blipFill><a:blip r:embed="${relationshipId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${width}" cy="${height}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
-</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`
-
-const cell = (
-  content: string,
-  width: number,
-  options: { gridSpan?: number; vMerge?: 'restart' | 'continue'; valign?: string } = {},
-) => {
-  const span = options.gridSpan ? `<w:gridSpan w:val="${options.gridSpan}"/>` : ''
-  const merge = options.vMerge ? `<w:vMerge${options.vMerge === 'restart' ? ' w:val="restart"' : ''}/>` : ''
-  const valign = options.valign ? `<w:vAlign w:val="${options.valign}"/>` : ''
-
-  return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${span}${merge}${valign}</w:tcPr>${content}</w:tc>`
-}
-
-const table = (
-  rows: string[][],
-  widths: number[],
-  options: { borderless?: boolean; borderSize?: number } = {},
-) => {
-  const borderSize = options.borderSize ?? 4
-  const borders = options.borderless
-    ? ''
-    : `<w:tblBorders><w:top w:val="single" w:sz="${borderSize}" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="${borderSize}" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="${borderSize}" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="${borderSize}" w:space="0" w:color="000000"/><w:insideH w:val="single" w:sz="${borderSize}" w:space="0" w:color="000000"/><w:insideV w:val="single" w:sz="${borderSize}" w:space="0" w:color="000000"/></w:tblBorders>`
-  const grid = widths.map((width) => `<w:gridCol w:w="${width}"/>`).join('')
-
-  return `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((sum, width) => sum + width, 0)}" w:type="dxa"/><w:tblCellMar><w:top w:w="12" w:type="dxa"/><w:left w:w="40" w:type="dxa"/><w:bottom w:w="12" w:type="dxa"/><w:right w:w="40" w:type="dxa"/></w:tblCellMar>${borders}</w:tblPr><w:tblGrid>${grid}</w:tblGrid>${rows
-    .map((row) => `<w:tr>${row.join('')}</w:tr>`)
-    .join('')}</w:tbl>`
-}
 
 const buildSummary = (evaluations: Evaluation[]) => {
   const totals: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
@@ -199,104 +128,59 @@ const buildComments = (evaluations: Evaluation[]) => {
   return balanced.slice(0, 5)
 }
 
-const getCrcTable = () => {
-  if (crcTable) return crcTable
+const buildLineRuns = (value: string) => {
+  const lines = value.split(/\r?\n/)
 
-  crcTable = Array.from({ length: 256 }, (_, index) => {
-    let c = index
-    for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-    return c >>> 0
+  return lines.map((line, index) =>
+    new TextRun({
+      text: line,
+      break: index > 0 ? 1 : undefined,
+      font: fontName,
+      size: fontSize,
+    }),
+  )
+}
+
+const buildTableCell = (
+  text: string,
+  width: number,
+  options: {
+    bold?: boolean
+    align?: Alignment
+    borderless?: boolean
+    spacingAfter?: number
+    columnSpan?: number
+    rowSpan?: number
+  } = {},
+) =>
+  new TableCell({
+    width: { size: width, type: WidthType.DXA },
+    columnSpan: options.columnSpan,
+    rowSpan: options.rowSpan,
+    borders: options.borderless
+      ? {
+          top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+          right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+        }
+      : undefined,
+    children: [
+      new Paragraph({
+        alignment: options.align,
+        spacing: options.spacingAfter ? { after: options.spacingAfter } : undefined,
+        children: [new TextRun({ text, bold: options.bold, font: fontName, size: fontSize })],
+      }),
+    ],
   })
-
-  return crcTable
-}
-
-const crc32 = (data: Uint8Array) => {
-  const table = getCrcTable()
-  let crc = 0xffffffff
-  data.forEach((byte) => {
-    crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8)
-  })
-  return (crc ^ 0xffffffff) >>> 0
-}
-
-const writeUint16 = (bytes: number[], value: number) => {
-  bytes.push(value & 0xff, (value >>> 8) & 0xff)
-}
-
-const writeUint32 = (bytes: number[], value: number) => {
-  bytes.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff)
-}
-
-const appendBytes = (target: number[], source: Uint8Array | number[]) => {
-  for (let index = 0; index < source.length; index += 1) {
-    target.push(source[index])
-  }
-}
-
-const createZip = (files: Array<{ name: string; data: Uint8Array }>) => {
-  const output: number[] = []
-  const central: number[] = []
-
-  files.forEach((file) => {
-    const name = encoder.encode(file.name)
-    const crc = crc32(file.data)
-    const offset = output.length
-
-    writeUint32(output, 0x04034b50)
-    writeUint16(output, 20)
-    writeUint16(output, 0)
-    writeUint16(output, 0)
-    writeUint16(output, 0)
-    writeUint16(output, 0)
-    writeUint32(output, crc)
-    writeUint32(output, file.data.length)
-    writeUint32(output, file.data.length)
-    writeUint16(output, name.length)
-    writeUint16(output, 0)
-    appendBytes(output, name)
-    appendBytes(output, file.data)
-
-    writeUint32(central, 0x02014b50)
-    writeUint16(central, 20)
-    writeUint16(central, 20)
-    writeUint16(central, 0)
-    writeUint16(central, 0)
-    writeUint16(central, 0)
-    writeUint16(central, 0)
-    writeUint32(central, crc)
-    writeUint32(central, file.data.length)
-    writeUint32(central, file.data.length)
-    writeUint16(central, name.length)
-    writeUint16(central, 0)
-    writeUint16(central, 0)
-    writeUint16(central, 0)
-    writeUint16(central, 0)
-    writeUint32(central, 0)
-    writeUint32(central, offset)
-    appendBytes(central, name)
-  })
-
-  const centralOffset = output.length
-  appendBytes(output, central)
-  writeUint32(output, 0x06054b50)
-  writeUint16(output, 0)
-  writeUint16(output, 0)
-  writeUint16(output, files.length)
-  writeUint16(output, files.length)
-  writeUint32(output, central.length)
-  writeUint32(output, centralOffset)
-  writeUint16(output, 0)
-
-  return new Blob([new Uint8Array(output)], {
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  })
-}
-
-const fetchBytes = async (url: string) => new Uint8Array(await (await fetch(url)).arrayBuffer())
 
 export const exportEvaluationReportDocx = async (batch: Batch) => {
   const evaluations = batch.evaluations ?? []
+
+  if (!evaluations.length) {
+    throw new Error('No evaluation entries are available for this batch.')
+  }
+
   const firstEvaluation = evaluations[0] ?? {}
   const activityTitle = String(firstEvaluation.trainingTitle || batch.name || '')
   const dateAndTime = formatDate(firstEvaluation.deliveryDate || batch.date || '')
@@ -305,113 +189,240 @@ export const exportEvaluationReportDocx = async (batch: Batch) => {
   const topicText = (topics.length ? topics : ['']).map((topic, index) => `Module ${index + 1}: ${topic}`).join('\n')
   const comments = buildComments(evaluations)
   const { summary, averages } = buildSummary(evaluations)
-  const [bagongLogo, atiLogo] = await Promise.all([fetchBytes(bagongPilipinasUrl), fetchBytes(atiLogoUrl)])
 
-  let body = ''
-  body += table(
-    [
-      [
-        cell(paragraph([imageRun('rId1', 640000, 640000), imageRun('rId2', 760000, 760000)].join(''), { align: 'right' }), 3600),
-        cell(
-          paragraph(
-            [
-              run('Republic of the Philippines\nDepartment of Agriculture\n', { size: 14 }),
-              run('AGRICULTURAL TRAINING INSTITUTE\n', { bold: true, color: '18A45B', size: 24 }),
-              run('Regional Training Center-13\n', { bold: true, size: 19 }),
-              run('Los Angeles, Butuan City\nMobile Nos.: (+63)945-3926484\ne-Mail: ati.caraga@ati.da.gov.ph\nURL: https://ati2.da.gov.ph/ati-13; www.e-extension.gov.ph', { size: 14 }),
-            ].join(''),
-          ),
-          5200,
-        ),
-      ],
+  const infoTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          buildTableCell('Activity Title', 2800, { borderless: true, spacingAfter: 160 }),
+          buildTableCell(activityTitle, 7200, { borderless: true, spacingAfter: 160 }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          buildTableCell('Date and Time', 2800, { borderless: true, spacingAfter: 160 }),
+          buildTableCell(dateAndTime, 7200, { borderless: true, spacingAfter: 160 }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          buildTableCell('Resource Person', 2800, { borderless: true, spacingAfter: 160 }),
+          buildTableCell(resourcePerson, 7200, { borderless: true, spacingAfter: 160 }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          buildTableCell('Topic/s Delivered', 2800, { borderless: true }),
+          new TableCell({
+            width: { size: 7200, type: WidthType.DXA },
+            borders: {
+              top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+              bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+              left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+              right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+            },
+            children: [
+              new Paragraph({
+                children: buildLineRuns(topicText),
+              }),
+            ],
+          }),
+        ],
+      }),
     ],
-    [3600, 5200],
-    { borderless: true },
-  )
-  body += textParagraph('RESULTS OF THE RESOURCE PERSON EVALUATION', { bold: true, size: 20 }, { align: 'center', before: 85, after: 300 })
-  body += table(
-    [
-      [cell(textParagraph('Activity Title:', { size: 18 }), 2250), cell(textParagraph(activityTitle, { size: 18 }), 6550)],
-      [cell(textParagraph('Date and Time:', { size: 18 }), 2250), cell(textParagraph(dateAndTime, { size: 18 }), 6550)],
-      [cell(textParagraph('Name of Resource Person:', { size: 18 }), 2250), cell(textParagraph(resourcePerson, { size: 18 }), 6550)],
-      [cell(textParagraph('Topic/s Delivered:', { size: 18 }), 2250, { valign: 'top' }), cell(textParagraph(topicText, { size: 18 }), 6550)],
-    ],
-    [2250, 6550],
-    { borderless: true },
-  )
-  body += textParagraph('The rating guide for the criteria is in Likert Scale format as the following:', { size: 18 }, { before: 100, after: 35 })
-  body += table(
-    [
-      [cell(textParagraph('Numerical Rating', { bold: true, size: 17 }, { align: 'center' }), 3000), cell(textParagraph('Adjectival Rating', { bold: true, size: 17 }, { align: 'center' }), 3000)],
+  })
+
+  const likertTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          buildTableCell('Numerical Rating', 4000, { bold: true, align: AlignmentType.CENTER }),
+          buildTableCell('Adjectival Rating', 6000, { bold: true, align: AlignmentType.CENTER }),
+        ],
+      }),
       ...[
         ['1', 'Poor'],
         ['2', 'Fair'],
         ['3', 'Satisfactorily'],
         ['4', 'Very Satisfactorily'],
         ['5', 'Excellent'],
-      ].map(([rating, label]) => [
-        cell(textParagraph(rating, { size: 17 }, { align: 'center' }), 3000),
-        cell(textParagraph(label, { size: 17 }, { align: 'center' }), 3000),
-      ]),
-    ],
-    [3000, 3000],
-  )
-  body += textParagraph('Results per criteria', { size: 17 }, { before: 45, after: 10 })
-
-  const resultRows: string[][] = [
-    [
-      cell(textParagraph('Criteria', { bold: true, size: 16 }, { align: 'center' }), 4700, { vMerge: 'restart' }),
-      cell(textParagraph('Percentage of Participants', { bold: true, size: 16 }, { align: 'center' }), 4100, { gridSpan: 5 }),
-    ],
-    [
-      cell(paragraph(), 4700, { vMerge: 'continue' }),
-      ...[1, 2, 3, 4, 5].map((rating) => cell(textParagraph(String(rating), { size: 16 }, { align: 'center' }), 820)),
-    ],
-    ...summary.map((item, index) => [
-      cell(textParagraph(`${index + 1}. ${item.label}`, { size: 15 }), 4700),
-      ...[1, 2, 3, 4, 5].map((rating) =>
-        cell(textParagraph(percentageText(item.percentages[rating]), { size: 15 }, { align: 'center' }), 820),
-      ),
-    ]),
-    [
-      cell(textParagraph('AVERAGE', { bold: true, size: 15 }, { align: 'center' }), 4700),
-      ...[1, 2, 3, 4, 5].map((rating) =>
-        cell(textParagraph(percentageText(averages[rating]), { bold: true, size: 15 }, { align: 'center' }), 820),
+      ].map(([rating, label]) =>
+        new TableRow({
+          children: [
+            buildTableCell(rating, 4000, { align: AlignmentType.CENTER }),
+            buildTableCell(label, 6000, { align: AlignmentType.CENTER }),
+          ],
+        }),
       ),
     ],
-  ]
-
-  body += table(resultRows, [4700, 820, 820, 820, 820, 820])
-  body += textParagraph('Comments and Suggestions:', { bold: true, size: 17 }, { before: 16, after: 0 })
-  comments.forEach((comment, index) => {
-    body += paragraph(`${run(`${index + 1}. `, { size: 16 })}${run(comment, { size: 16 })}`, { after: 0 })
   })
-  body += textParagraph('Thank you!', { bold: true, size: 17 }, { align: 'center', before: 65, after: 250 })
-  body += textParagraph('ISO 9001:2015 Certified\nC.R. No.: TUV 100 05 3040', { color: '808080', size: 12 }, { align: 'center' })
 
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
-<w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="504" w:right="792" w:bottom="576" w:left="792" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>`
-
-  const files = [
-    {
-      name: '[Content_Types].xml',
-      data: encoder.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'),
-    },
-    {
-      name: '_rels/.rels',
-      data: encoder.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'),
-    },
-    {
-      name: 'word/_rels/document.xml.rels',
-      data: encoder.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/Bagongpilipinas.png"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/ati-logo.png"/></Relationships>'),
-    },
-    { name: 'word/document.xml', data: encoder.encode(documentXml) },
-    { name: 'word/media/Bagongpilipinas.png', data: bagongLogo },
-    { name: 'word/media/ati-logo.png', data: atiLogo },
+  const resultHeader = [
+    new TableRow({
+      children: [
+        buildTableCell('Criteria', 5200, { bold: true, align: AlignmentType.CENTER, rowSpan: 2 }),
+        buildTableCell('Percentage of Participants', 4800, {
+          bold: true,
+          align: AlignmentType.CENTER,
+          columnSpan: 5,
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        ...[1, 2, 3, 4, 5].map((rating) =>
+          buildTableCell(String(rating), 960, { bold: true, align: AlignmentType.CENTER }),
+        ),
+      ],
+    }),
   ]
 
-  const blob = createZip(files)
+  const resultRows = summary.map((item, index) =>
+    new TableRow({
+      children: [
+        buildTableCell(`${index + 1}. ${item.label}`, 5200),
+        ...[1, 2, 3, 4, 5].map((rating) =>
+          buildTableCell(percentageText(item.percentages[rating]), 960, { align: AlignmentType.CENTER }),
+        ),
+      ],
+    }),
+  )
+
+  const resultAverage = new TableRow({
+    children: [
+      buildTableCell('AVERAGE', 5200, { bold: true, align: AlignmentType.CENTER }),
+      ...[1, 2, 3, 4, 5].map((rating) =>
+        buildTableCell(percentageText(averages[rating]), 960, { align: AlignmentType.CENTER }),
+      ),
+    ],
+  })
+
+  const resultsTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [...resultHeader, ...resultRows, resultAverage],
+  })
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            size: {
+              width: 11906,
+              height: 16838,
+            },
+            margin: {
+              top: 1440,
+              bottom: 994,
+              left: 1440,
+              right: 1440,
+            },
+          },
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: 'ISO 9001:2015 Certified',
+                    font: 'Arial',
+                    size: 16,
+                  }),
+                  new TextRun({
+                    text: 'C.R. NO.: TUV 100 05 3040',
+                    break: 1,
+                    font: 'Arial',
+                    size: 16,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 160 },
+            children: [
+              new TextRun({
+                text: 'Results of the Resource Person Evaluation',
+                font: fontName,
+                size: fontSize,
+                allCaps: true,
+                bold: true,
+              }),
+            ],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+          infoTable,
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+          new Paragraph({
+            spacing: { after: 160 },
+            children: [
+              new TextRun({ text: 'The rating guide for the criteria is in Likert Scale format, as the following:', font: fontName, size: fontSize }),
+            ],
+          }),
+          likertTable,
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+          new Paragraph({
+            spacing: { after: 160 },
+            children: [
+              new TextRun({ text: 'Results per Criteria', font: fontName, size: fontSize }),
+            ],
+          }),
+          resultsTable,
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+          new Paragraph({
+            spacing: { after: 160 },
+            children: [
+              new TextRun({ text: 'Comments and Suggestions:', font: fontName, size: fontSize }),
+            ],
+          }),
+          ...comments.map(
+            (comment, index) =>
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `${index + 1}. `,
+                    font: fontName,
+                    size: fontSize,
+                  }),
+                  new TextRun({ text: comment, font: fontName, size: fontSize }),
+                ],
+              }),
+          ),
+          new Paragraph({
+            children: [new TextRun({ text: '', font: fontName, size: fontSize })],
+          }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: 'Thank you!',
+                  bold: true,
+                  font: fontName,
+                  size: fontSize,
+                }),
+              ],
+            }),
+        ],
+      },
+    ],
+  })
+
+  const blob = await Packer.toBlob(doc)
   const safeName = String(batch.name || 'batch').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'batch'
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
