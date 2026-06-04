@@ -3,7 +3,8 @@ import atiLogo from '../images/ati logo.png'
 import { exportEvaluationFormDocx, exportEvaluationReportDocx } from './docxExport'
 import { importCriteriaAssessmentWorkbook } from './excelImport'
 
-const API_BASE_URL = 'http://localhost/tmis-api'
+// const API_BASE_URL = 'http://localhost/tmis-api'
+const API_BASE_URL = 'https://arrpe.aticaraga.tech/tmis-api'
 
 const initialBatchForm = {
   name: '',
