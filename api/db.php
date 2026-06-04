@@ -1,5 +1,4 @@
 <?php
-header('Content-Type: application/json');
 
 function open_tmis_connection(): mysqli
 {
