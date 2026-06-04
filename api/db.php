@@ -1,7 +1,8 @@
 <?php
 function open_tmis_connection(): mysqli
 {
-    $mysqli = new mysqli('localhost', 'root', '', 'tmis_db', 3306);
+    // $mysqli = new mysqli('localhost', 'root', '', 'tmis_db', 3306);
+    $mysqli = new mysqli('arrpe-tmis-o0o6ca', 'tmis_user', 'TMIS@dbpass2026', 'tmis_db', 3306);
 
     if ($mysqli->connect_errno) {
         http_response_code(500);
