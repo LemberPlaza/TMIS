@@ -1,4 +1,6 @@
 <?php
+header('Content-Type: application/json');
+
 function open_tmis_connection(): mysqli
 {
     // $mysqli = new mysqli('localhost', 'root', '', 'tmis_db', 3306);
