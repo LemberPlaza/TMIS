@@ -100,6 +100,7 @@ COPY --from=builder /app/api ./api
 RUN echo 'RewriteEngine On\n\
 RewriteCond %{REQUEST_FILENAME} !-f\n\
 RewriteCond %{REQUEST_FILENAME} !-d\n\
+RewriteCond %{REQUEST_URI} !^/api/\n\
 RewriteRule . /index.html [L]' > /var/www/html/.htaccess
 
 RUN chown -R www-data:www-data /var/www/html
