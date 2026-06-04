@@ -4,7 +4,7 @@ import { exportEvaluationFormDocx, exportEvaluationReportDocx } from './docxExpo
 import { importCriteriaAssessmentWorkbook } from './excelImport'
 
 // const API_BASE_URL = 'http://localhost/tmis-api'
-const API_BASE_URL = 'https://arrpe.aticaraga.tech/tmis-api'
+const API_BASE_URL = 'https://arrpe.aticaraga.tech/api'
 
 const initialBatchForm = {
   name: '',
@@ -336,7 +336,7 @@ function App() {
     setIsLoadingBatches(true)
 
     try {
-      const response = await fetch(`/${API_BASE_URL}/batches.php`, {
+      const response = await fetch(`${API_BASE_URL}/batches.php`, {
         headers: {
           Accept: 'application/json',
         },
@@ -453,7 +453,7 @@ function App() {
     setStatusMessage('Creating batch in MySQL...')
 
     try {
-      const response = await fetch(`/${API_BASE_URL}/batches.php`, {
+      const response = await fetch(`${API_BASE_URL}/batches.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -543,7 +543,7 @@ function App() {
     setStatusMessage('Updating batch...')
 
     try {
-      const response = await fetch(`/${API_BASE_URL}/batches.php`, {
+      const response = await fetch(`${API_BASE_URL}/batches.php`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -607,7 +607,7 @@ function App() {
     setStatusMessage('Deleting batch and its entries...')
 
     try {
-      const response = await fetch(`/${API_BASE_URL}/batches.php`, {
+      const response = await fetch(`${API_BASE_URL}/batches.php`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -727,7 +727,7 @@ function App() {
     setStatusMessage('Saving evaluation to Laragon MySQL...')
 
     try {
-      const response = await fetch(`/${API_BASE_URL}/save.php`, {
+      const response = await fetch(`${API_BASE_URL}/save.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -885,7 +885,7 @@ function App() {
         throw new Error(topicError)
       }
 
-      const response = await fetch(`/${API_BASE_URL}/evaluations.php`, {
+      const response = await fetch(`${API_BASE_URL}/evaluations.php`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -942,7 +942,7 @@ function App() {
     setStatusMessage('Deleting evaluation...')
 
     try {
-      const response = await fetch(`/${API_BASE_URL}/evaluations.php`, {
+      const response = await fetch(`${API_BASE_URL}/evaluations.php`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
